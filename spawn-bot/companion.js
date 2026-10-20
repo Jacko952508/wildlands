@@ -65,12 +65,12 @@ async function background(){
 }
 function html(){
 return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Hearthvale Companion</title><style>
-:root{color-scheme:dark}*{box-sizing:border-box}body{font-family:system-ui,-apple-system,sans-serif;margin:0;background:radial-gradient(ellipse at top,#26463e,#101e20 65%);color:#e9f2e8;min-height:100svh;padding:20px}main{max-width:700px;margin:25px auto}h1{font-size:32px;margin:0 0 5px}p{color:#b2c8bd;line-height:1.6}.panel{border:1px solid #446455;border-radius:16px;background:#182b2bea;padding:18px;margin:16px 0}.status{font-size:20px;color:#b4edb3;font-weight:700}button,input{font-size:16px;border-radius:11px;padding:13px;border:1px solid #789286}button{background:#315a45;color:white;cursor:pointer;margin:4px 5px 4px 0}button:disabled{opacity:.4}input{background:#091917;color:white;width:100%;max-width:360px}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;color:#bfd0c5}a{color:#bcf2cf}.small{font-size:13px}</style></head><body><main><h1>🌲 Hearthvale Companion</h1><p>Your separate AI player in Hearthvale. It follows you using the game's normal movement system, with no cheats or world modifications.</p><div class="panel"><div id="phase" class="status">Connecting…</div><p id="desc">Checking agent status</p><div id="secure" hidden><button id="start">Join / reconnect</button><button id="stop">Leave world</button><button id="follow">Follow</button><button id="idle">Stay put</button><div style="margin-top:12px"><input id="message" maxlength="180" placeholder="Say something in game chat"/><button id="say">Send chat</button></div></div><p id="lock" class="small" hidden>Open this page using the private companion link to enable controls.</p></div><div class="panel"><b>Latest activity</b><pre id="activity">No activity yet</pre><p id="error" class="small"></p></div><p><a href="https://www.spawn.co/@jbowzer/hearthvale/play">Open Hearthvale ↗</a></p></main><script>
+:root{color-scheme:dark}*{box-sizing:border-box}body{font-family:system-ui,-apple-system,sans-serif;margin:0;background:radial-gradient(ellipse at top,#26463e,#101e20 65%);color:#e9f2e8;min-height:100svh;padding:20px}main{max-width:700px;margin:25px auto}h1{font-size:32px;margin:0 0 5px}p{color:#b2c8bd;line-height:1.6}.panel{border:1px solid #446455;border-radius:16px;background:#182b2bea;padding:18px;margin:16px 0}.status{font-size:20px;color:#b4edb3;font-weight:700}button,input{font-size:16px;border-radius:11px;padding:13px;border:1px solid #789286}button{background:#315a45;color:white;cursor:pointer;margin:4px 5px 4px 0}button:disabled{opacity:.4}input{background:#091917;color:white;width:100%;max-width:360px}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;color:#bfd0c5}a{color:#bcf2cf}.small{font-size:13px}</style></head><body><main><h1>🌲 Hearthvale Companion</h1><p>Your separate AI player in Hearthvale. It follows you using the game's normal movement system, with no cheats or world modifications.</p><div class="panel"><div id="phase" class="status">Connecting…</div><p id="desc">Checking agent status</p><div id="secure" hidden><button id="start">Join / reconnect</button><button id="stop">Leave world</button><button id="follow">Follow</button><button id="idle">Stay put</button><button id="manual">Manual</button><button id="look">Look around</button><div style="margin-top:12px"><input id="message" maxlength="180" placeholder="Say something in game chat"/><button id="say">Send chat</button></div></div><p id="lock" class="small" hidden>Open this page using the private companion link to enable controls.</p></div><div class="panel"><b>Latest activity</b><pre id="activity">No activity yet</pre><p id="error" class="small"></p></div><p><a href="https://www.spawn.co/@jbowzer/hearthvale/play">Open Hearthvale ↗</a></p></main><script>
 const token=new URLSearchParams(location.hash.replace(/^#/,'' )).get('key')||sessionStorage.getItem('hearthvale-control');if(token)sessionStorage.setItem('hearthvale-control',token);
 const el=id=>document.getElementById(id);el('secure').hidden=!token;el('lock').hidden=!!token;
 async function req(path,data){const r=await fetch('/api/'+path,{method:data?'POST':'GET',headers:{'content-type':'application/json','x-companion-key':token||''},body:data?JSON.stringify(data):undefined,cache:'no-store'});return r.json()}
 async function refresh(){try{const r=await req('status');el('phase').textContent=(r.phase||'unknown').replaceAll('-',' ');el('desc').textContent=r.active?'The AI player has joined Hearthvale. Open the game and it will look for you.':'The AI is not currently in the game.';el('activity').textContent=(r.lastAction||'No activity yet').slice(-2500);el('error').textContent=r.lastError||''}catch(e){el('phase').textContent='Service waking up';}}
-for(const [id,command,body] of [['start','start',{}],['stop','stop',{}],['follow','mode',{mode:'follow'}],['idle','mode',{mode:'idle'}]]){el(id).onclick=async()=>{el(id).disabled=true;await req(command,body);await refresh();el(id).disabled=false}}
+for(const [id,command,body] of [['start','start',{}],['stop','stop',{}],['follow','mode',{mode:'follow'}],['idle','mode',{mode:'idle'}],['manual','mode',{mode:'manual'}],['look','action',{action:'inspect'}]]){el(id).onclick=async()=>{el(id).disabled=true;await req(command,body);await refresh();el(id).disabled=false}}
 el('say').onclick=async()=>{const text=el('message').value.trim();if(!text)return;await req('say',{text});el('message').value='';await refresh()};
 refresh();setInterval(refresh,12000);
 </script></body></html>`;
@@ -86,7 +86,24 @@ const server=Bun.serve({hostname:"0.0.0.0",port:Number(Bun.env.PORT || 10000),as
   let data={};try{data=await request.json()}catch{}
   if(url.pathname==="/api/start"){enabled=true;state.active=false;state.phase="reconnecting";join().catch(e=>state.lastError=String(e));return Response.json({ok:true})}
   if(url.pathname==="/api/stop"){enabled=false;state.mode="idle";state.phase="leaving";const r=await cli(["leave"],20000);state.active=false;state.phase="stopped";return Response.json(r)}
-  if(url.pathname==="/api/mode"){state.mode=data.mode==="idle"?"idle":"follow";return Response.json({ok:true,mode:state.mode})}
+  if(url.pathname==="/api/mode"){state.mode=["idle","follow","manual"].includes(data.mode)?data.mode:"follow";return Response.json({ok:true,mode:state.mode})}
+  if(url.pathname==="/api/action"){
+    if(working)return Response.json({ok:false,error:"companion is busy, retry"},{status:409});
+    const act=String(data.action||"");
+    let args;
+    if(act==="where")args=["where"];
+    else if(act==="players")args=["players"];
+    else if(act==="inspect")args=["run","-e","export default async (play) => ({where:await play.where(),players:await play.players(),inputs:await play.inputs(),state:await play.state()})"];
+    else if(act==="script"){
+      const source=String(data.source||"");
+      if(source.length>5000||!source.trim().startsWith("export default async"))return Response.json({ok:false,error:"script must export default async (play) and be at most 5000 chars"},{status:400});
+      args=["run","-e",source];
+    }else return Response.json({ok:false,error:"action must be where, players, inspect, or script"},{status:400});
+    state.mode="manual";working=true;
+    try{const result=await cli(args,50000);state.lastAction=result.out;state.lastUpdate=new Date().toISOString();if(!result.ok)state.lastError=result.out.slice(-1200);else state.lastError=null;return Response.json(result)}
+    catch(e){return Response.json({ok:false,error:String(e)},{status:500})}
+    finally{working=false}
+  }
   if(url.pathname==="/api/say"){const value=String(data.text||"").trim().slice(0,180);if(!value)return Response.json({error:"empty"},{status:400});const r=await cli(["say",value],16000);return Response.json(r)}
   return Response.json({error:"not found"},{status:404});
 }});
