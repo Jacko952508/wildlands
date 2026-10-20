@@ -1,0 +1,9 @@
+{
+  "name": "hearthvale-spawn-companion",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@spawnco/client": "0.2.0"
+  }
+}
